@@ -1,5 +1,6 @@
 #!/bin/bash
 
+DATABASE_PATH=db1
 LOGFILE=musicdb.log
 
 filepath="$1"
@@ -10,7 +11,7 @@ function log {
 
 [ ! -f "$1" ] && log "File doesn't exist!" && exit
 
-filename="${filepath##*/}"
+filename=$(echo "${filepath##*/}" | tr -s " ")
 fileformat="${filename##*.}"
 filetype="$(file -b "$1")"
 
@@ -23,16 +24,18 @@ genre=$(id3v2 -l "$1" | grep -m 1 -aE "^(TCON|TCO) ")
 genre="${genre##*: }" && genre="${genre% ([0-9]*)}"
 [ -z "$genre" ] && log "Invalid song genre, please specify it!" && exit
 
-artist=$(id3v2 -l "$1" | grep -m 1 -a "^TPE1 ") && artist="${artist#*: }"
+artist=$(id3v2 -l "$1" | grep -m 1 -aE "^(TPE1|TP1) ") && artist="${artist#*: }"
 [ -n "$artist" ] || artist="${filename%% - *}"
 [ -z "$artist" ] && log "Invalid song artist, please specify it!" && exit
 
-title=$(id3v2 -l "$1" | grep -m 1 -a "^TIT2 ") && title="${title#*: }"
+title=$(id3v2 -l "$1" | grep -m 1 -aE "^(TIT2|TT2) ") && title="${title#*: }"
 [ -z "$title" ] && title="${filename##* - }" && title="${title%.*}"
 [ -z "$title" ] && log "Invalid song title, please specify it!" && exit
 
 album=$(id3v2 -l "$1" | grep -m 1 -a "^TALB ") && album="${album#*: }"
 [ -z "$album" ] && album="Unknown Album"
 
-path="$genre/$artist/$album/$title.$fileformat"
+genre=${genre//\//-} && artist=${artist//\//-} && title=${title//\//-} && album=${album//\//-}
+
+path="$DATABASE_PATH/$genre/$artist/$album/$title.$fileformat"
 mkdir -p "${path%/*}" && cp -p "$1" "$path"
